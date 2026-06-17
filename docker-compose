@@ -1,0 +1,184 @@
+services:
+
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    restart: unless-stopped
+
+    command:
+      - --api.dashboard=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+
+    ports:
+      - "80:80"
+      - "8080:8080"
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    networks:
+      - ai-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+    volumes:
+      - ollama_data:/root/.ollama
+
+    networks:
+      - ai-network
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+
+    depends_on:
+      - ollama
+
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_AUTH=True
+
+    volumes:
+      - openwebui_data:/app/backend/data
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.openwebui.rule=Host(`openwebui.local`)
+      - traefik.http.services.openwebui.loadbalancer.server.port=8080
+
+    networks:
+      - ai-network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    restart: unless-stopped
+
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.qdrant.rule=Host(`qdrant.local`)
+      - traefik.http.services.qdrant.loadbalancer.server.port=6333
+
+    networks:
+      - ai-network
+
+  anythingllm:
+    image: mintplexlabs/anythingllm:latest
+    container_name: anythingllm
+    restart: unless-stopped
+
+    depends_on:
+      - ollama
+      - qdrant
+
+    volumes:
+      - anythingllm_data:/app/server/storage
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.anythingllm.rule=Host(`anythingllm.local`)
+      - traefik.http.services.anythingllm.loadbalancer.server.port=3001
+
+    networks:
+      - ai-network
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+
+    environment:
+      - N8N_HOST=n8n.local
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.n8n.rule=Host(`n8n.local`)
+      - traefik.http.services.n8n.loadbalancer.server.port=5678
+
+    networks:
+      - ai-network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+
+    command: -config.file=/etc/loki/local-config.yaml
+
+    volumes:
+      - ./loki/config.yml:/etc/loki/local-config.yaml
+
+    networks:
+      - ai-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+
+    depends_on:
+      - loki
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.grafana.rule=Host(`grafana.local`)
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
+
+    networks:
+      - ai-network
+
+  rag-service:
+    build:
+      context: ./rag-service
+
+    container_name: rag-service
+
+    restart: unless-stopped
+
+    depends_on:
+      - ollama
+      - qdrant
+
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - QDRANT_URL=http://qdrant:6333
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.rag.rule=Host(`rag.local`)
+      - traefik.http.services.rag.loadbalancer.server.port=8000
+
+    networks:
+      - ai-network
+
+volumes:
+  ollama_data:
+  openwebui_data:
+  qdrant_data:
+  anythingllm_data:
+  n8n_data:
+  grafana_data:
+
+networks:
+  ai-network:
+    driver: bridge

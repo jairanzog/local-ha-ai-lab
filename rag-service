@@ -1,0 +1,18 @@
+rag-service
+│
+├── API (FastAPI)
+│
+├── Controllers
+│
+├── Services
+│   ├── IngestionService
+│   ├── EmbeddingService
+│   ├── RetrievalService
+│   ├── PromptService
+│   └── LLMService
+│
+├── Providers
+│   ├── OllamaProvider
+│   └── QdrantProvider
+│
+└── Models
