@@ -7,7 +7,7 @@ Deploy a new Local AI platform that will allow interact with my currently deploy
 |Column | Description | components involved |
 |--------------|---------------|-------------|
 |UC.1-1| Check if there is any light turned on||
-|UC.1-2| Turn own the temperature based on plan text and conditions ||
+|UC.1-2| Check overal summary of home from last day when going outside||
 
 
 ## UC.2 Manipulate Home Status
@@ -15,8 +15,8 @@ Deploy a new Local AI platform that will allow interact with my currently deploy
 
 |Column | Description | components involved |
 |--------------|---------------|-------------|
-|UC.1-1| Switch on lights based on plan language| Local IA, N8N, home assistant|
-|UC.1-2| Turn own the temperature based on plan text and conditions ||
+|UC.2-1| Switch on lights based on plan language||
+|UC.2-2| Turn own the temperature based on plan text and conditions ||
 
 ## UC.3 Raise alarms in Home assistant based on complex circumstances
 
